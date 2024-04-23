@@ -24,3 +24,4 @@ src/starfield
 core
 _res/bkup
 .vscode
+build/

@@ -6,13 +6,11 @@
 #ifndef _starfield_H_
 #define _
 
+#include <ace/managers/state.h>
+
 // Function headers from game.c go here
 // It's best to put here only those functions which are needed in other files.
 
-void gameGsCreate(void);
-
-void gameGsLoop(void);
-
-void gameGsDestroy(void);
+extern tState g_sStateGame;
 
 #endif // _
