@@ -3,7 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include <time.h>
+// #include <time.h>
 #include <stdlib.h>
 #include "starfield.h"
 #include <ace/managers/key.h>                   // Keyboard processing
@@ -11,6 +11,9 @@
 #include <ace/managers/system.h>                // For systemUnuse and systemUse
 #include <ace/managers/viewport/simplebuffer.h> // Simple buffer
 #include <ace/utils/font.h> // needed for tFont and font stuff
+#include <ace/utils/sprite.h>
+#include <ace/utils/custom.h>
+#include <ace/managers/rand.h>
 
 #include "../_res/VampireItalialogo.h"
 #include "../_res/VampireItalialogopalette.h"
@@ -83,7 +86,7 @@ void gameGsCreate(void)
 {
   // Create a view - first arg is always zero, then it's option-value
   s_pView = viewCreate(0,
-                       TAG_VIEW_GLOBAL_CLUT, 1, // Same Color LookUp Table for all viewports
+                       TAG_VIEW_GLOBAL_PALETTE, 1, // Same Color LookUp Table for all viewports
                        TAG_END);                // Must always end with TAG_END or synonym: TAG_DONE
 
   // Now let's do the same for main playfield
@@ -113,10 +116,10 @@ void gameGsCreate(void)
   s_pFontUI = fontCreateFromMem((UBYTE*)uni54_data);
   if (s_pFontUI==NULL) return;
 
-  s_pGlyph = fontCreateTextBitMap(250, s_pFontUI->uwHeight);
+  s_pGlyph = fontCreateTextBitMap(256, s_pFontUI->uwHeight);
 
-  fontDrawStr(s_pMainBuffer->pBack, s_pFontUI, 10,10," Press 'O' TO paint starfield OVER the playfield",3, FONT_LAZY);
-  fontDrawStr(s_pMainBuffer->pBack, s_pFontUI, 10,20," Press 'U' TO paint starfield UNDER the playfield",3, FONT_LAZY);
+  fontDrawStr(s_pFontUI, s_pMainBuffer->pBack, 10,10," Press 'O' TO paint starfield OVER the playfield",3, FONT_LAZY, s_pGlyph);
+  fontDrawStr(s_pFontUI, s_pMainBuffer->pBack, 10,20," Press 'U' TO paint starfield UNDER the playfield",3, FONT_LAZY, s_pGlyph);
 
   // Copy 320X224 vampireitalialogo to bitplanes
 
@@ -171,7 +174,7 @@ void gameGsLoop(void)
   // If esc is pressed exit the demo
   if (keyCheck(KEY_ESCAPE))
   {
-    gameClose();
+    gameExit();
     return;
   }
 
@@ -206,7 +209,7 @@ void copBlockSpritesFree()
   for (UBYTE ubIterator = 0; ubIterator < ACE_MAXSPRITES; ubIterator++)
   {
     if (s_pAceSprites[ubIterator].pSpriteData)
-      FreeMem(s_pAceSprites[ubIterator].pSpriteData, s_pAceSprites[ubIterator].ulSpriteSize);
+      memFree(s_pAceSprites[ubIterator].pSpriteData, s_pAceSprites[ubIterator].ulSpriteSize);
   }
 }
 
@@ -217,8 +220,8 @@ tCopBlock *copBlockEnableSpriteRecycled(tCopList *pList, FUBYTE fubSpriteIndex, 
 
   if (pBlockSprites == NULL)
   {
-    pBlockSprites = copBlockDisableSprites(pList, 0xFF);
-    systemSetDma(DMAB_SPRITE, 1);
+    pBlockSprites = spriteDisableInCopBlockMode(pList, 0xFF);
+    systemSetDmaBit(DMAB_SPRITE, 1);
 
     // Reset tAceSprite array
     for (UBYTE ubIterator = 0; ubIterator < ACE_MAXSPRITES; ubIterator++)
@@ -234,7 +237,7 @@ tCopBlock *copBlockEnableSpriteRecycled(tCopList *pList, FUBYTE fubSpriteIndex, 
   }
   if (s_pAceSprites[fubSpriteIndex].pSpriteData)
   {
-    FreeMem(s_pAceSprites[fubSpriteIndex].pSpriteData, s_pAceSprites[fubSpriteIndex].ulSpriteSize);
+    memFree(s_pAceSprites[fubSpriteIndex].pSpriteData, s_pAceSprites[fubSpriteIndex].ulSpriteSize);
     s_pAceSprites[fubSpriteIndex].pSpriteData = NULL;
     s_pAceSprites[fubSpriteIndex].ulSpriteSize = 0;
     s_pAceSprites[fubSpriteIndex].bTrailingSpriteIndex = -1;
@@ -252,7 +255,7 @@ tCopBlock *copBlockEnableSpriteRecycled(tCopList *pList, FUBYTE fubSpriteIndex, 
   s_pAceSprites[fubSpriteIndex].uwSpriteCenter = 8;
 
   s_pAceSprites[fubSpriteIndex].ulSpriteSize = ulSpriteSize;
-  s_pAceSprites[fubSpriteIndex].pSpriteData = (UBYTE *)AllocMem(ulSpriteSize, MEMF_CHIP);
+  s_pAceSprites[fubSpriteIndex].pSpriteData = (UBYTE *)memAlloc(ulSpriteSize, MEMF_CHIP);
   memcpy(s_pAceSprites[fubSpriteIndex].pSpriteData, (void *)pSpriteData, ulSpriteSize);
 
   ULONG ulAddr = (ULONG)s_pAceSprites[fubSpriteIndex].pSpriteData;
@@ -307,14 +310,15 @@ void moveStars()
   }
 }
 
+tRandManager s_sRandManager;
+
 // Init stars sprite data with random values on the horizontal position starting from ubStarFirstVerticalPosition
 void initRandStars(UBYTE *pStarData2, const UBYTE ubStarFirstVerticalPosition, const UBYTE ubStarsCount)
 {
   const UBYTE ubSingleSpriteHeight = 1;
   const UBYTE ubSingleSpriteGap = 1;
   // Generate random X position from 64 to 216 (where the sprite is ON SCREEN)
-  time_t t;
-  srand((unsigned)time(&t));
+  randInit(&s_sRandManager, getRayPos().bfPosY, getRayPos().bfPosX);
 
   UWORD uwStarFirstVerticalPositionCounter = (UWORD)ubStarFirstVerticalPosition + ACE_SPRITE_MIN_VPOSITION;
 
@@ -323,7 +327,7 @@ void initRandStars(UBYTE *pStarData2, const UBYTE ubStarFirstVerticalPosition, c
     *pStarData2 = (UBYTE)(uwStarFirstVerticalPositionCounter & 0x00FF); // VSTART
 
     // Calculate HSTART
-    UWORD uwRandomXPosition = (rand() % 153) + 64;
+    UWORD uwRandomXPosition = (randUw(&s_sRandManager) % 153) + 64;
     *(pStarData2 + 1) = (UBYTE)uwRandomXPosition; // HSTART
 
     // Calculate VStop
@@ -361,3 +365,5 @@ void initRandStars(UBYTE *pStarData2, const UBYTE ubStarFirstVerticalPosition, c
   *(pStarData2 + 3) = 0x00;
   return;
 }
+
+tState g_sStateGame = {.cbCreate = gameGsCreate, .cbLoop = gameGsLoop, .cbDestroy = gameGsDestroy};
