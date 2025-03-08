@@ -1,37 +1,60 @@
-### Starfield Amiga demo
-This is just a little demostration on how to recycle hardware sprites on Amiga Computers. 
 
-This project takes advantage of the glorious ACE Engine by Kain at https://github.com/AmigaPorts/ACE
 
-![starfield.md](starfield.png)
+ACE Starfield
+----
 
-##### Build instructions
-
-To get the executable just clone the project and compile it with m68k-amigaos-gcc from Bebbo. 
-
-If you dont have time to build your toolchain you can use my docker image:
+Assuming you have the ACE helloworld setup already working (see [here](https://github.com/0wen101/vscode-amiga-gcc-ACE-helloworld)), it's fairly straightforward to get other ACE projects working.<br>For example [Starfield](https://github.com/Ozzyboshi/AmigaStarfield) which is configured here with the same VS Code setup as before (no changes to the Starfield code itself).
 
 ```
-docker run -it --rm -v #where you cloned the repo#:/data -w /data ozzyboshi/acedocker:20200311 /bin/bash
-autoreconf -i
-configure --host m68k
-make
+note : ACE projects not using the CMake build system (e.g. GNU Autotools) will require extra configuration to work here
 ```
 
-at this point you should have the executable built into your src directory.
+The approach is the same - CMake builds compatible Makefiles, VS Code then uses them to compile and build the Amiga exe and finally WinUAE is launched to run the exe.
 
-Alternatively you can download the executable from the Github release page of this project.
 
-##### How to run
-Nothing special, just copy the executable somewhere in your Amiga machine and launch it from the CLI or double clicking on its icon from the Workbench. 
-The project has been tested on real A600. 
+**instructions**
+<br>
 
-##### What is this about
-It's just a little demonstration on how to use Hardware sprites, each star in this demo is a sprite and 111 stars are drawn on the same frame.  
-The height of each sprite is 1 pixel, the width 16px.  
-As you may know old Amigas computers only have 8 sprites, we get 111 using a well known trick called "sprite recycling", all the sprites are concatenated one after another like a big sprite.  
-To use sprite recycling the only requirement the height difference of each sprite must beat least 1 pixel, this is why I ended up using 111 sprites.  
-The horizontal positions of the stars are generated randomly at boot time so each time you run the demo you get a different star pattern (even it's hard to notice on a first glance).  
-The stars are divided in 3 groups, the first one travels at slow speed, the second one at medium speed and the third one at high speed. You can adjust the speed just controlling how often the "moveStars" function is called.  
-At default, the stars moves behind a playfield containing a Vampire Italia logo (if you like Vampire accellerators please visit our forum at https://vampireitalia.forumfree.it/ ), pressing the 'O' keyboard button the playfield/sprite priority changes giving more priority to the stars.
+1.Make a build subfolder
 
+2.ACE is required of course and is already configured in file '.gitmodules' as a Git submodule.<br>If not there already, make a 'deps/ace' sub folder in your workspace folder. <br>For convenvience I am using Git bash and the commands are :
+
+```
+cd /d/Git/AmigaStarfield-ozzyb
+mkdir deps
+cd deps
+mkdir ace
+```
+
+
+Then pull down the correct version (commit 183188e is required to build starfield) : 
+
+```
+cd /d/Git/AmigaStarfield-ozzyb
+git submodule update --init --recursive
+cd deps/ace
+git checkout 183188e
+```
+
+3.Press Ctrl Shift P again and select **CMAKE: Configure**. Select GCC for m68k if prompted. This will create Bebbo GCC Makefiles.
+
+![alt text](docs/images/select-kit.jpg "select kit")
+
+4.Press **F7** to start building the Amiga binaries from the Makefiles and automatically copy the binary file to the correct WinUAE folder when done
+
+5.Press **F5** to execute the run task. This launches WinUAE with the exe configured to start in the startup-sequence file 
+
+If need to rebuild, delete the contents of the build folder then F7, F5 once again.
+
+**any issues**
+
+At time of writing, Starfield is not working with the latest version of ACE and requires an older version/commit 183188e on branch 'main' (the line 'git checkout 183188e' does that). <br>If using the wrong version of ACE (in the deps/ace) folder, you will see something like:
+
+![alt text](docs/images/asm-not-path.jpg "incorrect ACE branch/version")
+
+Likewise, if Starfield is not even compiling (when press F7), again check you are using commit 183188e of ACE in the deps/ace folder.
+
+
+<br>
+
+![alt text](docs/images/Starfield2_001.gif "starfield")

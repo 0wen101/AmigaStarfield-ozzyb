@@ -47,3 +47,10 @@ else()
 endif()
 
 target_link_libraries(${GAME_LINKED} ace)
+
+#post build copy the target
+
+add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:${TARGET_NAME}> ../uae/DH0/${TARGET_NAME}
+    #COMMENT "Created ${PROJECT_BINARY_DIR}/test_base.exe"
+)
