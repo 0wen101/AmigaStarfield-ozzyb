@@ -27,7 +27,7 @@ mkdir ace
 ```
 
 
-Then pull down the correct version (commit 183188e is required to build starfield) : 
+Then pull down the correct version code branch (commit 183188e is required to build starfield) : 
 
 ```
 cd /d/Git/AmigaStarfield-ozzyb
